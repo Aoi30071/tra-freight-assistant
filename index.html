@@ -647,7 +647,7 @@
         const directionText = isUpward ? "【北上列車】" : "【南下列車】";
         
         // 彈出視窗詢問學長調度路線
-        const isMountain = confirm(`${directionText} 竹南 ⇄ 彰化區間直達：${st1} ➔ ${st2}\n\n【確定】➔ 經由 山線 (經后里)\n【取消】➔ 經由 海線 (經大甲)`);
+        const isMountain = confirm(`${directionText} 竹南 ⇄ 彰化區間直達：${st1} ➔ ${st2}\n\n【確定】➔ 經由 山線 \n【取消】➔ 經由 海線 `);
         
         // 找出兩站中屬於「幹線(基隆起算)公里數」的物件
         // 如果走海線，我們需要獨立計算竹南以北（或彰化以南）的幹線距離
