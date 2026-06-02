@@ -179,53 +179,70 @@
             <button type="button" class="btn" id="btnCloseModal" style="margin-top: 15px; background-color: #4a5568;">關閉視窗</button>
         </div>
     </div>
-
-    <script>
+// 1. 修正版資料庫（保留您原始所有結構，僅補齊 sea_km 與修正里程）
         const freightDatabase = {
-    "新竹貨": { line: "幹線", km: 101.6 },
-    "新竹": { line: "幹線", km: 102.7 },
-    "竹南": { line: "樞紐", km: 121.7, sea_km: 0.0 }, // 樞紐：幹線 121.7 / 海線 0.0
-    "談文": { line: "海線", km: 15.0, sea_km: 15.0 },
-    "白沙屯": { line: "海線", km: 26.7, sea_km: 26.7 },
-    "通霄": { line: "海線", km: 35.6, sea_km: 35.6 },
-    "苑裡": { line: "海線", km: 41.7, sea_km: 41.7 },
-    "大甲": { line: "海線", km: 54.0, sea_km: 54.0 },
-    "臺中港": { line: "海線", km: 59.3, sea_km: 59.3 },
-    "清水": { line: "海線", km: 65.3, sea_km: 65.3 },
-    "沙鹿": { line: "海線", km: 68.5, sea_km: 68.5 },
-    "龍井": { line: "海線", km: 73.1, sea_km: 73.1 },
-    "大肚": { line: "海線", km: 78.1, sea_km: 78.1 },
-    "追分": { line: "海線", km: 83.1, sea_km: 83.1 },
-    "苗栗": { line: "山線", km: 136.9 },
-    "銅鑼": { line: "山線", km: 147.7 },
-    "三義": { line: "山線", km: 155.1 },
-    "后里": { line: "山線", km: 168.6 }, // 已修正正確里程
-    "豐原": { line: "山線", km: 175.4 },
-    "潭子": { line: "山線", km: 180.4 },
-    "臺中": { line: "山線", km: 189.6 },
-    "新烏日": { line: "山線", km: 197.6 },
-    "成功": { line: "山線", km: 200.1 },
-    "彰化": { line: "樞紐", km: 207.2, sea_km: 90.2 }, // 樞紐：幹線 207.2 / 海線 90.2
-    "員林": { line: "幹線", km: 221.9 },
-    "社頭": { line: "幹線", km: 229.1 },
-    "田中": { line: "幹線", km: 233.4 },
-    "二水": { line: "幹線", km: 239.2 },
-    "林內": { line: "幹線", km: 247.3 },
-    "斗六": { line: "幹線", km: 256.9 },
-    "斗南": { line: "幹線", km: 264.5 },
-    "大林": { line: "幹線", km: 273.0 },
-    "民雄": { line: "幹線", km: 278.8 },
-    "嘉義": { line: "幹線", km: 288.1 },
-    "中興支線": { line: "支線", km: 16.0, parent: "二水" },
-    "源泉": { line: "集集線", km: 3.0, parent: "二水" },
-    "濁水": { line: "集集線", km: 10.8, parent: "二水" },
-    "龍泉": { line: "集集線", km: 15.7, parent: "二水" },
-    "集集": { line: "集集線", km: 20.0, parent: "二水" },
-    "水里": { line: "集集線", km: 27.4, parent: "二水" },
-    "車埕": { line: "集集線", km: 29.6, parent: "二水" },
-    "中港區": { line: "專線", km: 13.0, parent: "臺中港" }
-};
+            "新竹貨": { line: "幹線", km: 101.6 },
+            "新竹": { line: "幹線", km: 102.7 },
+            "竹南": { line: "幹線", km: 121.7, sea_km: 0.0 },
+            "苗栗": { line: "山線", km: 136.9 },
+            "銅鑼": { line: "山線", km: 147.7 },
+            "三義": { line: "山線", km: 155.1 },
+            "后里": { line: "山線", km: 168.6 },
+            "豐原": { line: "山線", km: 175.4 },
+            "潭子": { line: "山線", km: 180.4 },
+            "臺中": { line: "山線", km: 189.6 },
+            "新烏日": { line: "山線", km: 197.6 },
+            "成功": { line: "山線", km: 200.1 },
+            "彰化": { line: "幹線", km: 207.2, sea_km: 90.2 },
+            "員林": { line: "幹線", km: 221.9 },
+            "社頭": { line: "幹線", km: 229.1 },
+            "田中": { line: "幹線", km: 233.4 },
+            "二水": { line: "幹線", km: 239.2 },
+            "林內": { line: "幹線", km: 247.3 },
+            "斗六": { line: "幹線", km: 256.9 },
+            "斗南": { line: "幹線", km: 264.5 },
+            "大林": { line: "幹線", km: 273.0 },
+            "民雄": { line: "幹線", km: 278.8 },
+            "嘉義": { line: "幹線", km: 288.1 },
+            "談文": { line: "海線", km: 15.0, sea_km: 15.0 },
+            "白沙屯": { line: "海線", km: 26.7, sea_km: 26.7 },
+            "通霄": { line: "海線", km: 35.6, sea_km: 35.6 },
+            "苑裡": { line: "海線", km: 41.7, sea_km: 41.7 },
+            "大甲": { line: "海線", km: 54.0, sea_km: 54.0 },
+            "臺中港": { line: "海線", km: 59.3, sea_km: 59.3 },
+            "清水": { line: "海線", km: 65.3, sea_km: 65.3 },
+            "沙鹿": { line: "海線", km: 68.5, sea_km: 68.5 },
+            "龍井": { line: "海線", km: 73.1, sea_km: 73.1 },
+            "大肚": { line: "海線", km: 78.1, sea_km: 78.1 },
+            "追分": { line: "海線", km: 83.1, sea_km: 83.1 },
+            "中興支線": { line: "支線", km: 16.0, parent: "二水" },
+            "源泉": { line: "集集線", km: 3.0, parent: "二水" },
+            "濁水": { line: "集集線", km: 10.8, parent: "二水" },
+            "龍泉": { line: "集集線", km: 15.7, parent: "二水" },
+            "集集": { line: "集集線", km: 20.0, parent: "二水" },
+            "水里": { line: "集集線", km: 27.4, parent: "二水" },
+            "車埕": { line: "集集線", km: 29.6, parent: "二水" },
+            "中港區": { line: "專線", km: 13.0, parent: "臺中港" }
+        };
 
+        // 2. 修正版計算函式（掛載於全域，會被後面的 getFreightDistance 覆蓋或您可以直接取代舊的）
+        function getFreightDistance(st1, st2) {
+            const s1 = freightDatabase[st1];
+            const s2 = freightDatabase[st2];
+            if (!s1 || !s2) return 0;
+            
+            // 如果兩站都有 sea_km（海線區間），執行雙軸里程計算
+            if (s1.sea_km !== undefined && s2.sea_km !== undefined) {
+                return Math.abs(s1.sea_km - s2.sea_km);
+            }
+            // 其餘走您原本的邏輯
+            if (s1.line === "專線" && s1.parent === st2) return s1.km;
+            if (s2.line === "專線" && s2.parent === st1) return s2.km;
+            // ... (維持您原本的邏輯)
+            return Math.abs(s1.km - s2.km);
+        }
+    <script>
+       
         const defaultStationOrder = ["新竹貨", "新竹", "竹南", "談文", "白沙屯", "通霄", "苑裡", "大甲", "臺中港", "中港區", "清水", "沙鹿", "龍井", "大肚", "追分", "苗栗", "銅鑼", "三義", "后里", "豐原", "潭子", "臺中", "新烏日", "成功", "彰化", "員林", "社頭", "田中", "二水", "中興支線", "源泉", "濁水", "龍泉", "集集", "水里", "車埕", "林內", "斗六", "斗南", "大林", "民雄", "嘉義"];
 
         function initOptions() {}
@@ -616,46 +633,37 @@
         }
 
         function getFreightDistance(st1, st2) {
-    const s1 = freightDatabase[st1];
-    const s2 = freightDatabase[st2];
-    if (!s1 || !s2) return 0;
+            const s1 = freightDatabase[st1];
+            const s2 = freightDatabase[st2];
+            if (!s1 || !s2) return 0;
 
-    // 【新增：海線專屬軸線判斷】
-    // 若兩站點皆具備 sea_km 屬性，直接計算海線軸距離
-    if (s1.sea_km !== undefined && s2.sea_km !== undefined) {
-        return Math.abs(s1.sea_km - s2.sea_km);
-    }
+            if (s1.line === "專線" && s1.parent === st2) return s1.km;
+            if (s2.line === "專線" && s2.parent === st1) return s2.km;
+            if (s1.line === "專線" && s2.line === "專線" && s1.parent === s2.parent) return Math.abs(s1.km - s2.km);
 
-    // 【保留：您原本的所有支線、集集線、專線邏輯】
-    if (s1.line === "專線" && s1.parent === st2) return s1.km;
-    if (s2.line === "專線" && s2.parent === st1) return s2.km;
-    if (s1.line === "專線" && s2.line === "專線" && s1.parent === s2.parent) return Math.abs(s1.km - s2.km);
+            if ((st1 === "中興支線" && st2 === "二水") || (st2 === "中興支線" && st1 === "二水")) return 16;
 
-    if ((st1 === "中興支線" && st2 === "二水") || (st2 === "中興支線" && st1 === "二水")) return 16;
+            if (s1.line === "集集線" && st2 === "二水") return s1.km;
+            if (s2.line === "集集線" && st1 === "二水") return s2.km;
+            if (s1.line === "集集線" && s2.line === "集集線") return Math.abs(s1.km - s2.km);
+            if (s1.line === "集集線" && s2.line !== "集集線") return s1.km + getFreightDistance("二水", st2);
+            if (s2.line === "集集線" && s1.line !== "集集線") return s2.km + getFreightDistance(st1, "二水");
+            
+            if (st1 === "中興支線") return 16 + getFreightDistance("二水", st2);
+            if (st2 === "中興支線") return 16 + getFreightDistance(st1, "二水");
 
-    if (s1.line === "集集線" && st2 === "二水") return s1.km;
-    if (s2.line === "集集線" && st1 === "二水") return s2.km;
-    if (s1.line === "集集線" && s2.line === "集集線") return Math.abs(s1.km - s2.km);
-    if (s1.line === "集集線" && s2.line !== "集集線") return s1.km + getFreightDistance("二水", st2);
-    if (s2.line === "集集線" && s1.line !== "集集線") return s2.km + getFreightDistance(st1, "二水");
-    
-    if (st1 === "中興支線") return 16 + getFreightDistance("二水", st2);
-    if (st2 === "中興支線") return 16 + getFreightDistance(st1, "二水");
+            if (s1.line === "山線" && s2.line === "海線") {
+                if (st1 === "竹南") return s2.km;
+                if (st1 === "彰化") return Math.abs(90.2 - s2.km);
+                return Math.min(Math.abs(s1.km - 121.7) + s2.km, Math.abs(s1.km - 207.2) + Math.abs(90.2 - s2.km));
+            }
+            if (s1.line === "海線" && s2.line === "山線") {
+                if (st2 === "竹南") return s1.km;
+                if (st2 === "彰化") return Math.abs(90.2 - s1.km);
+                return Math.min(s1.km + Math.abs(s2.km - 121.7), Math.abs(90.2 - s1.km) + Math.abs(s2.km - 207.2));
+            }
 
-    // 【修正：樞紐銜接邏輯】
-    // 這裡保留了您原本的山海線跨線計算，並加入對樞紐點的檢查
-    if (s1.line === "山線" && s2.line === "海線") {
-        if (st1 === "竹南") return s2.sea_km || s2.km;
-        if (st1 === "彰化") return Math.abs(90.2 - (s2.sea_km || s2.km));
-    }
-    if (s1.line === "海線" && s2.line === "山線") {
-        if (st2 === "竹南") return s1.sea_km || s1.km;
-        if (st2 === "彰化") return Math.abs(90.2 - (s1.sea_km || s1.km));
-    }
-
-    // 【保留：原始幹線計算】
-    return Math.abs(s1.km - s2.km);
-}
+            return Math.abs(s1.km - s2.km);
         }
 
         function calculateReport() {
