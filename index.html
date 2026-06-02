@@ -165,6 +165,21 @@
     <button type="button" class="btn btn-secondary" id="btnAddStation">＋ 新增停靠站</button>
     <div id="errorNotice" style="display: none; background-color: #ffe5e5; border: 2px solid #e53e3e; color: #e53e3e; padding: 12px; border-radius: 8px; margin-top: 15px; font-size: 0.9rem; font-weight: bold; line-height: 1.5;"></div>
 
+    <div id="directRouteSelector" style="display: none; background: #e6f0ff; border: 2px solid #1a5cff; padding: 12px; border-radius: 8px; margin: 15px 0 0 0; text-align: center; box-sizing: border-box;">
+        <span id="directRouteTitle" style="font-weight: bold; color: #002161; display: block; margin-bottom: 8px; font-size: 0.95rem;">
+            🧭 直達車運行線別確認
+        </span>
+        <div style="display: inline-flex; border-radius: 6px; overflow: hidden; border: 1px solid #1a5cff; width: 100%; max-width: 260px;">
+            <button type="button" id="toggleSea" onclick="setDirectRoute('sea')" style="flex: 1; background: #1a5cff; color: white; border: none; padding: 10px; font-weight: bold; font-size: 0.95rem; cursor: pointer; margin: 0;">
+                🌊 經由海線
+            </button>
+            <button type="button" id="toggleMountain" onclick="setDirectRoute('mountain')" style="flex: 1; background: #eeeeee; color: #333; border: none; padding: 10px; font-weight: bold; font-size: 0.95rem; cursor: pointer; margin: 0;">
+                ⛰️ 經由山線
+            </button>
+        </div>
+        <input type="hidden" id="currentDirectRoute" value="sea">
+    </div>
+
     <button type="button" class="btn" id="btnCalc" style="background-color: #38a169; margin-top: 15px;">📊 生成報單對照數據</button>
 
     <div id="resultModal" class="modal">
@@ -578,11 +593,70 @@
             updateFollowStations(index);
         };
 
+        // 方案 B 開關視覺切換與賦值
+        window.setDirectRoute = function(route) {
+            const btnSea = document.getElementById('toggleSea');
+            const btnMtn = document.getElementById('toggleMountain');
+            const inputRoute = document.getElementById('currentDirectRoute');
+            if (!btnSea || !btnMtn || !inputRoute) return;
+            
+            if (route === 'sea') {
+                btnSea.style.background = '#1a5cff';
+                btnSea.style.color = 'white';
+                btnMtn.style.background = '#eeeeee';
+                btnMtn.style.color = '#333';
+                inputRoute.value = 'sea';
+            } else {
+                btnSea.style.background = '#eeeeee';
+                btnSea.style.color = '#333';
+                btnMtn.style.background = '#dc3545'; // 切換山線時顯示警示紅
+                btnMtn.style.color = 'white';
+                inputRoute.value = 'mountain';
+            }
+        }
+
+        // 方案 B 核心升級：自動掃描所有相鄰車站，只要有一段是竹南=彰化直達，就秀出開關
+        function checkDirectRouteVisibility() {
+            const names = document.querySelectorAll('.st-name');
+            const selectorDiv = document.getElementById('directRouteSelector');
+            const titleSpan = document.getElementById('directRouteTitle');
+            if (!selectorDiv) return;
+
+            // 至少要有兩站才能進行逐段檢查
+            if (names.length >= 2) {
+                // 迴圈逐段檢查所有相鄰的車站
+                for (let i = 0; i < names.length - 1; i++) {
+                    const st1 = names[i].value;
+                    const st2 = names[i+1].value;
+                    
+                    if (st1 && st2) {
+                        const isNorthSide = (st1 === "新竹貨" || st1 === "新竹" || st1 === "竹南" || st2 === "新竹貨" || st2 === "新竹" || st2 === "竹南");
+                        const isSouthSide = (st1 === "彰化" || st1 === "員林" || st1 === "社頭" || st1 === "田中" || st1 === "二水" || st1 === "林內" || st1 === "斗六" || st1 === "斗南" || st1 === "大林" || st1 === "民雄" || st1 === "嘉義" || st2 === "彰化" || st2 === "員林" || st2 === "社頭" || st2 === "田中" || st2 === "二水" || st2 === "林內" || st2 === "斗六" || st2 === "斗南" || st2 === "大林" || st2 === "民雄" || st2 === "嘉義");
+                        
+                        // 只要發現有任何相鄰的兩站「跨越了竹南與彰化」，就代表這趟行程包含了直達大區間
+                        if (isNorthSide && isSouthSide) {
+                            const s1 = freightDatabase[st1];
+                            const s2 = freightDatabase[st2];
+                            if (s1 && s2) {
+                                const directionText = (s1.km > s2.km) ? "【北上】" : "【南下】";
+                                if (titleSpan) titleSpan.innerText = `🧭 運轉調度：偵測到區間包含 ${directionText} 直達路段 (${st1} ➔ ${st2})`;
+                            }
+                            selectorDiv.style.display = 'block'; // 立刻秀出手機開關，並結束檢查
+                            return;
+                        }
+                    }
+                }
+            }
+            // 如果全車程所有路段都沒有包含竹南=彰化直達（例如中間多停了靠站），就隱藏開關並重設回海線
+            selectorDiv.style.display = 'none';
+            setDirectRoute('sea');
+        }
         window.deleteCard = function(buttonObj) {
             const card = buttonObj.closest('.station-card');
             if (card) {
                 card.remove();
                 refreshStationLabels();
+                checkDirectRouteVisibility(); // 刪除卡片時動態檢查
             }
         };
 
@@ -619,90 +693,79 @@
             
             const allCards = Array.from(document.querySelectorAll('.station-card'));
             const currentIndex = allCards.indexOf(card);
+            
+            // 監聽變更：選站有變動時，除了原本的智慧推薦，也即時觸發直達車開關判定
             if (currentIndex === 0) {
-                select.addEventListener('change', () => updateFollowStations(0));
+                select.addEventListener('change', () => { updateFollowStations(0); checkDirectRouteVisibility(); });
             } else {
-                select.addEventListener('change', () => updateFollowStations(currentIndex));
+                select.addEventListener('change', () => { updateFollowStations(currentIndex); checkDirectRouteVisibility(); });
             }
 
             refreshStationLabels();
+            checkDirectRouteVisibility(); // 新增卡片時動態檢查
         }
 
         function getFreightDistance(st1, st2) {
-    const s1 = freightDatabase[st1];
-    const s2 = freightDatabase[st2];
-    if (!s1 || !s2) return 0;
+            const s1 = freightDatabase[st1];
+            const s2 = freightDatabase[st2];
+            if (!s1 || !s2) return 0;
 
-    // 【核心修正】精準判定：只要列車是在「竹南以北/竹南」與「彰化以南/彰化」之間直達運行
-    // 就代表它一定會經過竹南=彰化這個山海線大區間，必須彈出確認
-    const isNorthSide = (st1 === "新竹貨" || st1 === "新竹" || st1 === "竹南" || st2 === "新竹貨" || st2 === "新竹" || st2 === "竹南");
-    const isSouthSide = (st1 === "彰化" || st1 === "員林" || st1 === "社頭" || st1 === "田中" || st1 === "二水" || st1 === "林內" || st1 === "斗六" || st1 === "斗南" || st1 === "大林" || st1 === "民雄" || st1 === "嘉義" || st2 === "彰化" || st2 === "員林" || st2 === "社頭" || st2 === "田中" || st2 === "二水" || st2 === "林內" || st2 === "斗六" || st2 === "斗南" || st2 === "大林" || st2 === "民雄" || st2 === "嘉義");
-    
-    // 兩站直達且一頭在北、一頭在南（完美包含竹南=彰化直達，以及新竹貨=彰化直達等所有狀況）
-    const isDirectCross = isNorthSide && isSouthSide;
+            // 【核心精準判定】竹南 ⇄ 彰化 大區間直達
+            const isNorthSide = (st1 === "新竹貨" || st1 === "新竹" || st1 === "竹南" || st2 === "新竹貨" || st2 === "新竹" || st2 === "竹南");
+            const isSouthSide = (st1 === "彰化" || st1 === "員林" || st1 === "社頭" || st1 === "田中" || st1 === "二水" || st1 === "林內" || st1 === "斗六" || st1 === "斗南" || st1 === "大林" || st1 === "民雄" || st1 === "嘉義" || st2 === "彰化" || st2 === "員林" || st2 === "社頭" || st2 === "田中" || st2 === "二水" || st2 === "林內" || st2 === "斗六" || st2 === "斗南" || st2 === "大林" || st2 === "民雄" || st2 === "嘉義");
+            const isDirectCross = isNorthSide && isSouthSide;
 
-    if (isDirectCross) {
-        // 自動判斷行車方向（起點的公里數較大代表北上，較小代表南下）
-        const isUpward = (s1.km > s2.km);
-        const directionText = isUpward ? "【北上列車】" : "【南下列車】";
-        
-        // 彈出視窗詢問學長調度路線
-        const isMountain = confirm(`${directionText} 竹南 ⇄ 彰化區間直達：${st1} ➔ ${st2}\n\n【確定】➔ 經由 山線 \n【取消】➔ 經由 海線 `);
-        
-        // 找出兩站中屬於「幹線(基隆起算)公里數」的物件
-        // 如果走海線，我們需要獨立計算竹南以北（或彰化以南）的幹線距離
-        if (isMountain) {
-            // 1. 走山線：最簡單，直接用兩站的幹線 km 相減（例如：彰化 207.2 - 新竹貨 101.6 = 105.6 km）
+            if (isDirectCross) {
+                // 直接無感抓取畫面上目前的開關值（看是 sea 還是 mountain）
+                const chosenRoute = document.getElementById('currentDirectRoute').value;
+                
+                if (chosenRoute === 'mountain') {
+                    // 1. 走山線
+                    return Math.abs(s1.km - s2.km);
+                } else {
+                    // 2. 走海線
+                    const northStation = (s1.km < s2.km) ? s1 : s2;
+                    const southStation = (s1.km < s2.km) ? s2 : s1;
+                    const northToChunan = Math.abs(northStation.km - 121.7);
+                    const changhuaToSouth = Math.abs(southStation.km - 207.2);
+                    return northToChunan + 90.2 + changhuaToSouth;
+                }
+            }
+
+            // 1. 海線內部區間
+            if (s1.sea_km !== undefined && s2.sea_km !== undefined) {
+                if (!((st1 === "竹南" && st2 === "彰化") || (st2 === "竹南" && st1 === "彰化"))) {
+                    return Math.abs(s1.sea_km - s2.sea_km);
+                }
+            }
+
+            // 2. 跨線邏輯 (僅處理：一站是純海線車站，另一站是幹線/山線)
+            if ((s1.sea_km !== undefined) !== (s2.sea_km !== undefined)) {
+                const seaObj = (s1.sea_km !== undefined) ? s1 : s2;
+                const trunkObj = (s1.sea_km === undefined) ? s1 : s2;
+                const trunkKm = trunkObj.km;
+                
+                if (trunkKm < 160) {
+                    return Math.abs(trunkKm - 121.7) + seaObj.sea_km;
+                } else {
+                    return Math.abs(trunkKm - 207.2) + Math.abs(seaObj.sea_km - 90.2);
+                }
+            }
+
+            // 3. 支線與其他
+            if (s1.line === "專線" && s1.parent === st2) return s1.km;
+            if (s2.line === "專線" && s2.parent === st1) return s2.km;
+            if ((st1 === "中興支線" && st2 === "二水") || (st2 === "中興支線" && st1 === "二水")) return 16;
+            if (s1.line === "集集線" && st2 === "二水") return s1.km;
+            if (s2.line === "集集線" && st1 === "二水") return s2.km;
+            if (s1.line === "集集線" && s2.line === "集集線") return Math.abs(s1.km - s2.km);
+            if (s1.line === "集集線") return s1.km + getFreightDistance("二水", st2);
+            if (s2.line === "集集線") return s2.km + getFreightDistance(st1, "二水");
+            if (st1 === "中興支線") return 16 + getFreightDistance("二水", st2);
+            if (st2 === "中興支線") return 16 + getFreightDistance(st1, "二水");
+
             return Math.abs(s1.km - s2.km);
-        } else {
-            // 2. 走海線：
-            // 先找出北端車站（新竹貨/新竹/竹南）與南端車站（彰化/員林...）
-            const northStation = (s1.km < s2.km) ? s1 : s2;
-            const southStation = (s1.km < s2.km) ? s2 : s1;
-            
-            // 計算：(北端到竹南的距離) + (海線全段 90.2 km) + (彰化到南端的距離)
-            const northToChunan = Math.abs(northStation.km - 121.7);
-            const changhuaToSouth = Math.abs(southStation.km - 207.2);
-            
-            return northToChunan + 90.2 + changhuaToSouth;
         }
-    }
-
-    // 1. 海線內部區間
-    if (s1.sea_km !== undefined && s2.sea_km !== undefined) {
-        // 為了防止竹南直達彰化繞過上面的直達判定，這裡強制排除竹南=彰化純直達走海線內部
-        if (!((st1 === "竹南" && st2 === "彰化") || (st2 === "竹南" && st1 === "彰化"))) {
-            return Math.abs(s1.sea_km - s2.sea_km);
-        }
-    }
-
-    // 2. 跨線邏輯 (僅處理：一站是純海線車站，另一站是幹線/山線)
-    if ((s1.sea_km !== undefined) !== (s2.sea_km !== undefined)) {
-        const seaObj = (s1.sea_km !== undefined) ? s1 : s2;
-        const trunkObj = (s1.sea_km === undefined) ? s1 : s2;
-        const trunkKm = trunkObj.km;
-        
-        if (trunkKm < 160) {
-            return Math.abs(trunkKm - 121.7) + seaObj.sea_km;
-        } else {
-            return Math.abs(trunkKm - 207.2) + Math.abs(seaObj.sea_km - 90.2);
-        }
-    }
-
-    // 3. 支線與其他
-    if (s1.line === "專線" && s1.parent === st2) return s1.km;
-    if (s2.line === "專線" && s2.parent === st1) return s2.km;
-    if ((st1 === "中興支線" && st2 === "二水") || (st2 === "中興支線" && st1 === "二水")) return 16;
-    if (s1.line === "集集線" && st2 === "二水") return s1.km;
-    if (s2.line === "集集線" && st1 === "二水") return s2.km;
-    if (s1.line === "集集線" && s2.line === "集集線") return Math.abs(s1.km - s2.km);
-    if (s1.line === "集集線") return s1.km + getFreightDistance("二水", st2);
-    if (s2.line === "集集線") return s2.km + getFreightDistance(st1, "二水");
-    if (st1 === "中興支線") return 16 + getFreightDistance("二水", st2);
-    if (st2 === "中興支線") return 16 + getFreightDistance(st1, "二水");
-
-    return Math.abs(s1.km - s2.km);
-}
         function calculateReport() {
             const names = document.querySelectorAll('.st-name');
             const guaRs = document.querySelectorAll('.st-gua-r');
@@ -798,9 +861,11 @@
             document.getElementById('btnAddStation').addEventListener('click', addStationCard);
             document.getElementById('btnCalc').addEventListener('click', calculateReport);
             document.getElementById('btnCloseModal').addEventListener('click', closeModal);
-            document.getElementById('trainNo').addEventListener('input', () => updateFollowStations(-1));
+            // 當修改車次時，同步檢查是否影響直達推薦
+            document.getElementById('trainNo').addEventListener('input', () => { updateFollowStations(-1); checkDirectRouteVisibility(); });
             addStationCard();
             addStationCard();
+            checkDirectRouteVisibility(); // 💡 補上這行，初始化時做防呆檢查
         }
 
         const startScheduler = setInterval(() => {
