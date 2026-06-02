@@ -30,6 +30,13 @@
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
         
+        /* 專門幫日期選單設計的 3 欄併排排版 */
+        .date-select-group {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 1fr;
+            gap: 4px;
+        }
+
         label { font-size: 0.75rem; color: #555; display: block; margin-bottom: 3px; font-weight: bold; }
         input, select {
             width: 100%;
@@ -116,8 +123,13 @@
             <input type="text" id="trainNo" value="7021">
         </div>
         <div>
-            <label>日期 (民國)</label>
-            <input type="text" id="trainDate" value="115/06/02">
+            <label>日期 (民國年/月/日)</label>
+            <!-- 升級：移除原本的盲打輸入框，改成三個獨立的優雅選單 -->
+            <div class="date-select-group">
+                <select id="dateYear"></select>
+                <select id="dateMonth"></select>
+                <select id="dateDay"></select>
+            </div>
         </div>
     </div>
 
@@ -208,7 +220,53 @@
 
         const defaultStationOrder = ["新竹貨", "新竹", "竹南", "談文", "白沙屯", "通霄", "苑裡", "大甲", "臺中港", "中港區", "清水", "沙鹿", "龍井", "大肚", "追分", "苗栗", "銅鑼", "三義", "后里", "豐原", "潭子", "臺中", "新烏日", "成功", "彰化", "員林", "社頭", "田中", "二水", "中興支線", "源泉", "濁水", "龍泉", "集集", "水里", "車埕", "林內", "斗六", "斗南", "大林", "民雄", "嘉義"];
 
-        function initOptions() {}
+        // 【新增：智慧日期選單初始化與今天時間自動抓取】
+        function setupSmartDatePicker() {
+            const ySelect = document.getElementById('dateYear');
+            const mSelect = document.getElementById('dateMonth');
+            const dSelect = document.getElementById('dateDay');
+            if (!ySelect || !mSelect || !dSelect) return;
+
+            // 1. 自動讀取系統今天的時間
+            const today = new Date();
+            const currentTaiwanYear = today.getFullYear() - 1911; // 西元轉民國
+            const currentMonth = today.getMonth() + 1; // 月份從0開始，需要+1
+            const currentDay = today.getDate();
+
+            // 2. 鋪設民國年選單 (提供今年與前後各2年)
+            let yHtml = '';
+            for (let y = currentTaiwanYear - 2; y <= currentTaiwanYear + 2; y++) {
+                yHtml += `<option value="${y}">民國 ${y} 年</option>`;
+            }
+            ySelect.innerHTML = yHtml;
+            ySelect.value = currentTaiwanYear;
+
+            // 3. 鋪設月份選單 (1~12)
+            let mHtml = '';
+            for (let m = 1; m <= 12; m++) {
+                let mText = m < 10 ? '0' + m : m;
+                mHtml += `<option value="${mText}">${m} 月</option>`;
+            }
+            mSelect.innerHTML = mHtml;
+            mSelect.value = currentMonth < 10 ? '0' + currentMonth : currentMonth;
+
+            // 4. 鋪設日期選單 (1~31)
+            let dHtml = '';
+            for (let d = 1; d <= 31; d++) {
+                let dText = d < 10 ? '0' + d : d;
+                dHtml += `<option value="${dText}">${d} 日</option>`;
+            }
+            dSelect.innerHTML = dHtml;
+            dSelect.value = currentDay < 10 ? '0' + currentDay : currentDay;
+        }
+
+        // 【優化：將分散的選單內容重新打包為標準民國字串】
+        function getFormattedDateString() {
+            const y = document.getElementById('dateYear').value;
+            const m = document.getElementById('dateMonth').value;
+            const d = document.getElementById('dateDay').value;
+            return `${y}/${m}/${d}`; // 完美還原為傳統報單的 "115/06/02" 格式
+        }
 
         function getOptionText(key) {
             const info = freightDatabase[key];
@@ -384,11 +442,11 @@
                             defaultStationOrder.forEach(key => { if (key !== prevName) html += `<option value="${key}">${getOptionText(key)}</option>`; });
                             html += `</optgroup>`;
                         }
-                    } else if (prevName === "中文區") {
+                    } else if (prevName === "中港區") {
                         html += `<optgroup label="🧭 車次奇偶推薦：中港區出專線">`;
                         html += `<option value="臺中港">臺中港 (海線) ⭐</option>`;
                         html += `</optgroup><optgroup label="其餘幹線車站">`;
-                        defaultStationOrder.forEach(key => { if (key !== "臺中港" && key !== "中文區") html += `<option value="${key}">${getOptionText(key)}</option>`; });
+                        defaultStationOrder.forEach(key => { if (key !== "臺中港" && key !== "中港區") html += `<option value="${key}">${getOptionText(key)}</option>`; });
                         html += `</optgroup>`;
                     } else {
                         if (dirType === 'even') {
@@ -638,7 +696,8 @@
             }
 
             document.getElementById('resTrainNo').innerText = document.getElementById('trainNo').value;
-            document.getElementById('resDate').innerText = document.getElementById('trainDate').value;
+            // 升級：生成報單時，自動向智慧日期選單撈取組合好的民國字串
+            document.getElementById('resDate').innerText = getFormattedDateString();
 
             let html = `<tr style="font-weight:bold; background-color:#fff3cd;">
                 <td>共計</td><td>${totalGuaR || ''}</td><td>${totalGuaK || ''}</td><td>${totalZhaiR || ''}</td><td>${totalZhaiK || ''}</td>
@@ -659,11 +718,14 @@
         function closeModal() { document.getElementById('resultModal').style.display = 'none'; }
 
         function initApp() {
-            initOptions();
+            // 先啟動智慧日期選單建構
+            setupSmartDatePicker();
+            
             document.getElementById('btnAddStation').addEventListener('click', addStationCard);
             document.getElementById('btnCalc').addEventListener('click', calculateReport);
             document.getElementById('btnCloseModal').addEventListener('click', closeModal);
             document.getElementById('trainNo').addEventListener('input', () => updateFollowStations(-1));
+            
             addStationCard();
             addStationCard();
         }
