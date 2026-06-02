@@ -633,18 +633,55 @@
     const s2 = freightDatabase[st2];
     if (!s1 || !s2) return 0;
 
-    // 1. 海線內部區間
-    if (s1.sea_km !== undefined && s2.sea_km !== undefined) {
-        return Math.abs(s1.sea_km - s2.sea_km);
+    // 【核心修正】精準判定：只要列車是在「竹南以北/竹南」與「彰化以南/彰化」之間直達運行
+    // 就代表它一定會經過竹南=彰化這個山海線大區間，必須彈出確認
+    const isNorthSide = (st1 === "新竹貨" || st1 === "新竹" || st1 === "竹南" || st2 === "新竹貨" || st2 === "新竹" || st2 === "竹南");
+    const isSouthSide = (st1 === "彰化" || st1 === "員林" || st1 === "社頭" || st1 === "田中" || st1 === "二水" || st1 === "林內" || st1 === "斗六" || st1 === "斗南" || st1 === "大林" || st1 === "民雄" || st1 === "嘉義" || st2 === "彰化" || st2 === "員林" || st2 === "社頭" || st2 === "田中" || st2 === "二水" || st2 === "林內" || st2 === "斗六" || st2 === "斗南" || st2 === "大林" || st2 === "民雄" || st2 === "嘉義");
+    
+    // 兩站直達且一頭在北、一頭在南（完美包含竹南=彰化直達，以及新竹貨=彰化直達等所有狀況）
+    const isDirectCross = isNorthSide && isSouthSide;
+
+    if (isDirectCross) {
+        // 自動判斷行車方向（起點的公里數較大代表北上，較小代表南下）
+        const isUpward = (s1.km > s2.km);
+        const directionText = isUpward ? "【北上列車】" : "【南下列車】";
+        
+        // 彈出視窗詢問學長調度路線
+        const isMountain = confirm(`${directionText} 竹南 ⇄ 彰化區間直達：${st1} ➔ ${st2}\n\n【確定】➔ 經由 山線 (經后里)\n【取消】➔ 經由 海線 (經大甲)`);
+        
+        // 找出兩站中屬於「幹線(基隆起算)公里數」的物件
+        // 如果走海線，我們需要獨立計算竹南以北（或彰化以南）的幹線距離
+        if (isMountain) {
+            // 1. 走山線：最簡單，直接用兩站的幹線 km 相減（例如：彰化 207.2 - 新竹貨 101.6 = 105.6 km）
+            return Math.abs(s1.km - s2.km);
+        } else {
+            // 2. 走海線：
+            // 先找出北端車站（新竹貨/新竹/竹南）與南端車站（彰化/員林...）
+            const northStation = (s1.km < s2.km) ? s1 : s2;
+            const southStation = (s1.km < s2.km) ? s2 : s1;
+            
+            // 計算：(北端到竹南的距離) + (海線全段 90.2 km) + (彰化到南端的距離)
+            const northToChunan = Math.abs(northStation.km - 121.7);
+            const changhuaToSouth = Math.abs(southStation.km - 207.2);
+            
+            return northToChunan + 90.2 + changhuaToSouth;
+        }
     }
 
-    // 2. 跨線邏輯 (僅處理：一站是海線，另一站不是)
+    // 1. 海線內部區間
+    if (s1.sea_km !== undefined && s2.sea_km !== undefined) {
+        // 為了防止竹南直達彰化繞過上面的直達判定，這裡強制排除竹南=彰化純直達走海線內部
+        if (!((st1 === "竹南" && st2 === "彰化") || (st2 === "竹南" && st1 === "彰化"))) {
+            return Math.abs(s1.sea_km - s2.sea_km);
+        }
+    }
+
+    // 2. 跨線邏輯 (僅處理：一站是純海線車站，另一站是幹線/山線)
     if ((s1.sea_km !== undefined) !== (s2.sea_km !== undefined)) {
         const seaObj = (s1.sea_km !== undefined) ? s1 : s2;
         const trunkObj = (s1.sea_km === undefined) ? s1 : s2;
         const trunkKm = trunkObj.km;
         
-        // 分流：后里/豐原以北(km < 160)走竹南，以南走彰化
         if (trunkKm < 160) {
             return Math.abs(trunkKm - 121.7) + seaObj.sea_km;
         } else {
